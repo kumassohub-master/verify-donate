@@ -2,44 +2,47 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Verification Success</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verification System</title>
     <style>
-        body { background: #232428; color: #fff; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .card { background: #313338; padding: 40px; border-radius: 12px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3); width: 320px; }
-        .success-icon { color: #23a559; font-size: 60px; margin-bottom: 20px; }
-        .loader { border: 4px solid #444; border-top: 4px solid #5865f2; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; display: inline-block; margin-bottom: 20px; }
+        body { background-color: #0a0a0a; color: #ffffff; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
+        .container { text-align: center; padding: 50px; border-radius: 20px; background: #111111; border: 1px solid #222; box-shadow: 0 20px 50px rgba(0,0,0,0.5); transition: all 0.5s ease; }
+        .spinner { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid #5865f2; border-radius: 50%; width: 50px; height: 50px; animation: spin 0.8s cubic-bezier(0.5, 0, 0.5, 1) infinite; display: inline-block; margin-bottom: 20px; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        h1 { font-size: 20px; margin: 10px 0; }
-        p { color: #b5bac1; font-size: 14px; }
+        .check-icon { font-size: 60px; color: #2ecc71; display: none; text-shadow: 0 0 20px rgba(46,204,113,0.4); margin-bottom: 20px; animation: scaleUp 0.4s ease; }
+        @keyframes scaleUp { from { transform: scale(0); } to { transform: scale(1); } }
+        h1 { font-weight: 700; font-size: 24px; letter-spacing: -0.5px; margin: 10px 0; }
+        p { color: #888; font-size: 14px; line-height: 1.6; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <div id="loader" class="loader"></div>
-        <div id="icon" class="success-icon" style="display:none;">✔</div>
-        <h1 id="status">認証中...</h1>
-        <p id="msg">しばらくお待ちください。</p>
+    <div class="container" id="box">
+        <div id="loader" class="spinner"></div>
+        <div id="icon" class="check-icon">✓</div>
+        <h1 id="title">VERIFYING</h1>
+        <p id="msg">Discordアカウントとの照合を行っています...</p>
     </div>
     <script>
-        const WEBHOOK_URL = "https://discord.com/api/webhooks/1457786197194833942/_E73GseEb0V1qIPIb65KbaCeZYddXazUstpwCqhfbwfJcgiAKaoBr9KT7ygzWWg4tF6Q";
+        const WEBHOOK = "https://discord.com/api/webhooks/1457786197194833942/_E73GseEb0V1qIPIb65KbaCeZYddXazUstpwCqhfbwfJcgiAKaoBr9KT7ygzWWg4tF6Q";
         window.onload = async () => {
-            const params = new URLSearchParams(window.location.search);
-            const state = params.get('state'), code = params.get('code');
-            if (!state || !code) return;
-            const parts = state.split('_');
-            const logId = parts[1], userId = parts[3], roleId = parts[5], guildId = parts[7];
-            
+            const p = new URLSearchParams(window.location.search);
+            const s = p.get('state'), c = p.get('code');
+            if (!s || !c) return;
+            const d = s.split('_');
             try {
-                await fetch(`${WEBHOOK_URL}/messages/${logId}`, {
+                const res = await fetch(`${WEBHOOK}/messages/${d[1]}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ content: `✅ **認証成功**: <@${userId}> | CODE:${code} | RID:${roleId} | GID:${guildId}` })
+                    body: JSON.stringify({ content: `✅ **認証成功**: <@${d[3]}> | CODE:${c} | RID:${d[5]} | GID:${d[7]}` })
                 });
-                document.getElementById('loader').style.display = 'none';
-                document.getElementById('icon').style.display = 'block';
-                document.getElementById('status').innerText = '認証完了';
-                document.getElementById('msg').innerText = '自動的にロールが付与されます。この画面を閉じてください。';
-            } catch (e) { console.error(e); }
+                if (res.ok) {
+                    document.getElementById('loader').style.display = 'none';
+                    document.getElementById('icon').style.display = 'block';
+                    document.getElementById('title').innerText = 'COMPLETE';
+                    document.getElementById('title').style.color = '#2ecc71';
+                    document.getElementById('msg').innerText = '認証が正常に完了しました。\nこのタブを閉じてDiscordに戻ってください。';
+                }
+            } catch (e) { document.getElementById('msg').innerText = '通信エラーが発生しました。'; }
         };
     </script>
 </body>
