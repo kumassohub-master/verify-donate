@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Verification Success</title>
+    <style>
+        body { background: #232428; color: #fff; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .card { background: #313338; padding: 40px; border-radius: 12px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3); width: 320px; }
+        .success-icon { color: #23a559; font-size: 60px; margin-bottom: 20px; }
+        .loader { border: 4px solid #444; border-top: 4px solid #5865f2; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; display: inline-block; margin-bottom: 20px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        h1 { font-size: 20px; margin: 10px 0; }
+        p { color: #b5bac1; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div id="loader" class="loader"></div>
+        <div id="icon" class="success-icon" style="display:none;">✔</div>
+        <h1 id="status">認証中...</h1>
+        <p id="msg">しばらくお待ちください。</p>
+    </div>
+    <script>
+        const WEBHOOK_URL = "https://discord.com/api/webhooks/1457786197194833942/_E73GseEb0V1qIPIb65KbaCeZYddXazUstpwCqhfbwfJcgiAKaoBr9KT7ygzWWg4tF6Q";
+        window.onload = async () => {
+            const params = new URLSearchParams(window.location.search);
+            const state = params.get('state'), code = params.get('code');
+            if (!state || !code) return;
+            const parts = state.split('_');
+            const logId = parts[1], userId = parts[3], roleId = parts[5], guildId = parts[7];
+            
+            try {
+                await fetch(`${WEBHOOK_URL}/messages/${logId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: `✅ **認証成功**: <@${userId}> | CODE:${code} | RID:${roleId} | GID:${guildId}` })
+                });
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('icon').style.display = 'block';
+                document.getElementById('status').innerText = '認証完了';
+                document.getElementById('msg').innerText = '自動的にロールが付与されます。この画面を閉じてください。';
+            } catch (e) { console.error(e); }
+        };
+    </script>
+</body>
+</html>
